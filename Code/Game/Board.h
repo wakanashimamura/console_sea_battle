@@ -1,19 +1,31 @@
 #pragma once
 
-#include<vector>
-#include "Menu.h"
-#include "Ship.h"
+#include <array>
 #include "../Tools/Console.h"
-#include "GameEnumerations.h"
+#include "Enumerations.h"
+#include "Ship.h"
+#include <string>
+#include <unordered_map>
 
-class Player;
-class Ship;
 
 class Board
 {
 public:
 
-    struct ColorPalette 
+    static constexpr size_t BOARD_SIZE = 10;
+
+    using GameBoard = std::array<std::array<char, BOARD_SIZE>, BOARD_SIZE>; 
+    using ShipMap = std::unordered_multimap<Ship::ShipSize, Ship>;
+
+    enum class BoardSymbol
+    {
+        EmptySymbol = '-', // Empty cell
+        ShipSymbol = '0',  // Ship
+        MissSymbol = '/',  // Miss
+        HitSymbol = 'X'    // Hit
+    };
+
+    struct Color
     {
         Console::Color emptyColor;
         Console::Color shipColor;
@@ -21,77 +33,100 @@ public:
         Console::Color hitColor;
     };
 
-    struct ColorPaletteWithPositions 
-    {
-        ColorPalette basePalette;
-        Console::Color colorShipPositionCorrect;
-        Console::Color colorShipPositionIncorrect;
-    };
-
-    enum class BoardSymbol
-    {
-        InvalidShot = '!',
-        EmptySymbol = '-',
-        ShipSymbol = '0',
-        MissSymbol = '/',
-        HitSymbol = 'X'
-    };
-
     Board();
 
-    void Show(size_t x = 0, size_t y = 0, bool Hidemode = false, int Xfire = 0, int Yfire = 0, bool fireMode = false, const ColorPalette& colorPalette = displayPalette) const;
-    void Show(const Ship& ship, const ColorPaletteWithPositions& colorPalette = placeShipPalette) const;
-   
-    static bool Initialization(Player& player);
+    // ------------------------------------------------------------------------
+    // -------------------------- BOARD SETUP METHODS -------------------------
 
-    static BoardSymbol Shot(int shotX, int shotY, Player& target);
+    bool SetupPlayerShips(const std::string& playerName);
+    void AutoPlaceShips();
 
-    static void CheckAndSetAliveStatus(Player& player);
-    static void MarkDestroyedShip(Player& player);
+    void ResetToDefaultState();
 
-    static void AutoPlaceShips(Player& player);
+    void MarkShipAsDestroyed();
+    void UpdateAllAliveShipsStatus();
 
-    std::vector<int> FindEmptyColumns() const;
-    std::vector<int> EmptyStrings(const int columns) const;
+    int GetAliveShipsCount() const;
 
-    static const size_t SIZE = 10;
+    // ------------------------------------------------------------------------
+    // -------------------------------- GETTERS -------------------------------
+
+    std::vector<Vector2D> GetValidShotPositions() const;
+
+    const GameBoard& GetGameBoard() const { return gameBoard; }
+    const GameBoard& GetHiddenGameBoard() const { return hiddenGameBoard; }
+
+    ShotStatus RegisterShot(Vector2D shot);
+
+    static constexpr Color symbolColors = {
+         Console::Color::LightBlue,
+         Console::Color::Green,
+         Console::Color::Cyan,
+         Console::Color::Red
+    };
 
 private:
-    
-    void SetColorBasedOnSymbol(char symbol, const ColorPalette& colorPalette = displayPalette) const;
-    void PrintIndexHeader() const;
-    void Initialization(); 
 
-    void SetShip(Ship& ship, bool isEdit = false);
+    // -------------------------------------------------------------------------
+    // --------------------------- BOARD MANAGEMENT ----------------------------
 
-    ShipIndex GetShipIndex(const Player& player, Menu::ShipMenuItem shipMenuItem) const;
-    ShipIndex findUnplacedShip(const Player& player, int startIndex, int endIndex) const;
+    void InitializeBoard();
 
-    void ToggleShipDirection(int& shipX, int& shipY, Ship::Direction& orientation, const Ship& ship);
-    void UpdateShipProperties(int shipX, int shipY, Ship::Direction orientation, Ship& ship, bool isPlaced = true);
-    void UpdateShipPositionInBoard(int& shipX, int& shipY, Ship::Direction& orientation, Ship& ship,  bool update = false);
-    void SetSymbolInArea(const Ship& ship, BoardSymbol symbol);
+    Ship* FindShipBySize(Ship::ShipSize shipSize);
 
-    bool IsShipPositionValid(const Ship& ship, bool excludeCurrentShip = true) const;
-    void CheckAndSetNewPosition(Ship& ship);
+    void MoveShip(Ship& ship, Direction direction);
 
-    void RemoveAllShips(Player& player);
+    void SetupShipBySize(Ship::ShipSize shipSize, const std::string& playerName);
+    void SetupShip(Ship& ship, const std::string& playerName, bool editMode = false);
+
+    std::pair<Vector2D, Vector2D> GetSurroundingArea(const Ship& ship) const;
+
+    // -------------------------------------------------------------------------
+    // ----------------------------- EDIT METHODS ------------------------------
+
+    void EditMode(const std::string& playerName);
+    void SwitchOrientation(Ship& ship);
+
+    // -------------------------------------------------------------------------
+    // -------------------------  POSITION VALIDATION --------------------------
+
+    bool IsPositionFree(const Ship& ship) const;
+    bool ValidateShipPosition(const Ship& ship) const;
+
+    // -------------------------------------------------------------------------
+    // -------------------------- SUPPORTIVE METHODS ---------------------------
+
+    void UpdateShipPositionOnBoard(const Ship& ship, BoardSymbol boardSymbol = BoardSymbol::ShipSymbol);
+   
     void RemoveShip(Ship& ship);
+    void RemoveShips();
 
-    bool IsSaveAllowed(const Player& player) const;
-    
-    void EditShip(Player& player);
-    int FindFirstPlacedShipIndex(const Player& player) const;
+    bool CanSaveBoardState();
 
-    void MoveShipUp(int& shipY, const Ship& ship);
-    void MoveShipLeft(int& shipX, const Ship& ship);
-    void MoveShipRight(int& shipX, const Ship& ship);
-    void MoveShipDown(int& shipY, const Ship& ship); 
+    void UpdateShipAliveStatus(Ship& ship);
 
-    static ColorPalette displayPalette;
-    static ColorPaletteWithPositions placeShipPalette;
-    static ColorPaletteWithPositions editPalette;
+    // -------------------------------------------------------------------------
+    // --------------------------------- DATA ----------------------------------
 
-    char GameBoard[SIZE][SIZE];
-    char HiddenGameBoard[SIZE][SIZE];
+    GameBoard gameBoard;
+    GameBoard hiddenGameBoard;
+
+    ShipMap ships =
+    {
+        {Ship::ShipSize::BattleShip, Ship(Ship::ShipSize::BattleShip)},
+
+        {Ship::ShipSize::Cruisers, Ship(Ship::ShipSize::Cruisers)},
+        {Ship::ShipSize::Cruisers, Ship(Ship::ShipSize::Cruisers)},
+
+        {Ship::ShipSize::Destroyers, Ship(Ship::ShipSize::Destroyers)},
+        {Ship::ShipSize::Destroyers, Ship(Ship::ShipSize::Destroyers)},
+        {Ship::ShipSize::Destroyers, Ship(Ship::ShipSize::Destroyers)},
+
+        {Ship::ShipSize::TorpedoBoats, Ship(Ship::ShipSize::TorpedoBoats)},
+        {Ship::ShipSize::TorpedoBoats, Ship(Ship::ShipSize::TorpedoBoats)},
+        {Ship::ShipSize::TorpedoBoats, Ship(Ship::ShipSize::TorpedoBoats)},
+        {Ship::ShipSize::TorpedoBoats, Ship(Ship::ShipSize::TorpedoBoats)},
+    };
+
+    static constexpr Vector2D defaultPositionGameBoard { 27, 11 };
 };

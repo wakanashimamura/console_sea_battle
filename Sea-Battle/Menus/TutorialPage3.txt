@@ -1,0 +1,27 @@
++----------------------------------------------------------------------------------------------------+
+|   <- #2                    CC _____      _             _       _     CW                    #4 ->   |
+|                            CC|_   _|   _| |_ ___  _ __(_) __ _| |___ CW                            |
+|                            CC  | || | | | __/ _ \| '__| |/ _` | / __|CW                            |
+|                            CC  | || |_| | || (_) | |  | | (_| | \__ \CW                            |
+|                            CC  |_| \__,_|\__\___/|_|  |_|\__,_|_|___/CW                            |
+|                                                                                                    |
+|                                                                                                    |
+|   3. Game Turn                                                                                     |
+|                                                                                                    |
+|       Players take turns shooting at cells on the opponent's grid.                                 |
+|       Hit: If the shot hits a ship, it is marked with an 'X'. The player gets to shoot again.      |
+|       Sunk: If all cells of a ship have been hit, that ship is considered "sunk."                  |
+|       Miss: If the shot misses, it is marked with a '/'.                                           |
+|                                                                                                    |
+|   4. Goal of the Game                                                                              |
+|                                                                                                    |
+|       The goal of the game is to be the first to sink all of the opponent's ships.                 |
+|                                                                                                    |
+|   5. End of the Game                                                                               |
+|                                                                                                    |
+|       The game ends when one player destroys all of the opponent's ships.                          |
+|                                                                                                    |
+|                                                                                                    |
+|                                                                                                    |
+|CR ESC / PgUp (main menu) CW                                                                   #3   |
++----------------------------------------------------------------------------------------------------+

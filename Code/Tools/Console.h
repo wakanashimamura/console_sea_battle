@@ -1,13 +1,17 @@
 #pragma once
+
 #include <string>
 #include <Windows.h>
+
+#undef max
 
 class Console
 {
 public:
+
 	Console() = delete;
 
-	enum class Color 
+	enum class Color
 	{
 		Blue = 1,
 		Green = 2,
@@ -26,15 +30,21 @@ public:
 	static void StopFor(unsigned milliseconds);
 	static void ResetCursorPosition();
 	static void SetCursorPosition(size_t x, size_t y);
+	static std::pair<short, short> GetCursorPosition();
 	static void HideCursor();
 	static void SetWindowSize(SHORT width, SHORT height);
+	static void SetFontSettings(SHORT fontSize, const std::wstring& fontName);
 	static void DisableScrollBars();
+	static void DisableMaximizeButton();
+	static void DisableWindowResizing();
 	static void SetTitle(const std::string& title);
 
 	static void ClearScreen();
 	static void PauseApplication();
-	static void ChangColor(Color color);
+	static void ChangeColor(Color color);
+
 private:
+
 	static HANDLE consoleHandle;
 	static HWND consoleWindow;
 };

@@ -1,24 +1,37 @@
 #pragma once
+
 class InputManager
 {
 public:
+
 	InputManager() = delete;
 
 	enum class Key
 	{
-		PgDn = 81,
-		Enter = 13,
-		Escape = 27,
-		ArrowUp = 72,
-		ArrowLeft = 75,
-		ArrowRight = 77,
-		ArrowDown = 80,
-		Arrow = 224,
-		None = -1
+		None = -1,
+		Tab,
+		Enter,
+		Escape,
+		ArrowUp,
+		ArrowLeft,
+		ArrowRight,
+		ArrowDown,
+		PageDown,
+		PageUp,
+		Delete,
+		A,
+		D,
+		E,
+		Q,
+		S,
+		W
 	};
 
+	static void ClearBuffer();
 	static bool UserPressedKey();
 	static Key PressedKey();
+	static int Getch();
+
 private:
 	static Key pressedKey;
 };

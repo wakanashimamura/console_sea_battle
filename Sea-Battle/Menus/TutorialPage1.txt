@@ -1,0 +1,27 @@
++----------------------------------------------------------------------------------------------------+
+|                            CC _____      _             _       _     CW                    #2 ->   |
+|                            CC|_   _|   _| |_ ___  _ __(_) __ _| |___ CW                            |
+|                            CC  | || | | | __/ _ \| '__| |/ _` | / __|CW                            |
+|                            CC  | || |_| | || (_) | |  | | (_| | \__ \CW                            |
+|                            CC  |_| \__,_|\__\___/|_|  |_|\__,_|_|___/CW                            |
+|                                                                                                    |
+|   To go to a menu item, use arrow                                                                  |
+|                                                                                                    |
+|   Welcome to this classic strategy game where players take turns attempting to sink each other's   |
+|   fleet of ships. The first player to successfully destroy all of their opponent's ships           |
+|   wins the game!                                                                                   |
+|                                                                                                    |
+|   1. Game Controls                                                                                 |
+|                                                                                                    |
+|   During Ship Placement:                                                                           |
+|      Page Down (PgDn): Change the ship's direction (horizontal to vertical and vice versa).        |
+|      Arrow keys: Move the ship.                                                                    |
+|      Enter: Place the ship (green indicates a valid position, red indicates an invalid position).  |
+|      Esc: Cancel the ship placement. If no ship is selected, return to the main menu.              |
+|   During Gameplay:                                                                                 |
+|      Arrow keys: Move the crosshair.                                                               |
+|      Enter: Take a shot.                                                                           |
+|                                                                                                    |
+|                                                                                                    |
+|CR ESC / PgUp (main menu) CW                                                                   #1   |
++----------------------------------------------------------------------------------------------------+

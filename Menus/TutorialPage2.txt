@@ -1,0 +1,27 @@
++----------------------------------------------------------------------------------------------------+
+|   <- #1                    CC _____      _             _       _     CW                    #3 ->   |
+|                            CC|_   _|   _| |_ ___  _ __(_) __ _| |___ CW                            |
+|                            CC  | || | | | __/ _ \| '__| |/ _` | / __|CW                            |
+|                            CC  | || |_| | || (_) | |  | | (_| | \__ \CW                            |
+|                            CC  |_| \__,_|\__\___/|_|  |_|\__,_|_|___/CW                            |
+|                                                                                                    |
+|                                                                                                    |
+|   2. Ships                                                                                         |
+|                                                                                                    |
+|   Each player has a fleet consisting of:                                                           |
+|       1 ship  of 4 cells                                                                           |
+|       2 ships of 3 cells                                                                           |
+|       3 ships of 2 cells                                                                           |
+|       4 ships of 1 cell                                                                            |
+|   Placement Rules:                                                                                 |
+|       Ships can be placed only horizontally or vertically.                                         |
+|       Ships cannot touch each other (neither sides nor corners);                                   |
+|     there must be at least one free cell between them.                                             |
+|       If a player cannot place all their ships due to lack of space,                               |
+|     they must rearrange their existing ships to create a valid configuration.                      |
+|                                                                                                    |
+|                                                                                                    |
+|                                                                                                    |
+|                                                                                                    |
+|CR ESC / PgUp (main menu) CW                                                                   #2   |
++----------------------------------------------------------------------------------------------------+

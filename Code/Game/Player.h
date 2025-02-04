@@ -1,44 +1,47 @@
 #pragma once
 
-#include "Board.h"	
-#include "Ship.h"
-
-class Ship;
-class Board;
+#include "Board.h"
+#include "Statistics.h"
+#include <string>
 
 class Player
 {
 public:
 
-	void ChangePlayerName(const std::string& name);
+    static constexpr int MAX_USERNAME_LENGTH = 17;
 
-    void ShowPlayerName(int X = 0, int Y = 0, Console::Color color = Console::Color::Magenta) const;
-	void ShowPlayerName(Console::Color color = Console::Color::Magenta) const;
+    Player(Vector2D boardPosition, const std::string name = "Player");
 
-	static const Player* Shoot(const Player& shooter, Player& target, bool& isStartGame, int boardX, int boardY);
-	
-	static const Player* SelectionWinner(const Player& shooter, const Player& target);
+    virtual std::pair<ShotStatus, GameAction> Shot(Player& target);
 
-	bool IsLivingShip() const;
-	int SumLiveShips() const;
+    virtual bool PlaceShips();
 
-	Player(const std::string& name);
+    void ChangeName(const std::string& name);
+    void ResetAfterMatch();
 
-	static const size_t SIZE = 10;
+    void UpdateWinnerStatus();
+    void UpdateLoserStatus();
 
-	Ship Ships[SIZE] =
-	{
-		Ship(Ship::ShipSize::Battleship),
-		Ship(Ship::ShipSize::Cruisers),Ship(Ship::ShipSize::Cruisers),
-		Ship(Ship::ShipSize::Destroyers),Ship(Ship::ShipSize::Destroyers),Ship(Ship::ShipSize::Destroyers),
-		Ship(Ship::ShipSize::TorpedoBoats),Ship(Ship::ShipSize::TorpedoBoats),Ship(Ship::ShipSize::TorpedoBoats),Ship(Ship::ShipSize::TorpedoBoats)
-	};
+    void Write(std::ofstream& fileStream) const;
+    void Read(std::ifstream& fileStream);
 
-	Board gameBoard;
+    ShotStatus ShootAtBoard(const Vector2D& position) { return boardGame.RegisterShot(position); }
 
-private:
+    const std::string& GetName() const { return name; }
+    const Statistics& GetStatistics() const { return statistics; }
+    const Board& GetBoard() const { return boardGame; }
+    const Vector2D& GetBoardPosition() const { return boardPosition; }
 
-	static bool GetShootingCoordinates(const Player& target, int& shotX, int& shotY, int boardX, int boardY);
+    static constexpr int MR = 50;
 
-	std::string playerName = "None Name";
+protected:
+
+    static constexpr Vector2D DefaultCrosshairPosition{ 5, 5 };
+
+    std::string name;
+    Statistics statistics;
+    Board boardGame;
+
+    Vector2D boardPosition;
+    Vector2D crosshair;
 };

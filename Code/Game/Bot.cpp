@@ -1,268 +1,155 @@
 #include "Bot.h"
 
-#include <vector>
-#include <iostream>
-#include <cstring>
-
 #include "../Tools/Random.h"
+#include "UserInterface.h"
 
-BotDifficulty Bot::difficulty = BotDifficulty::Normal;
-
-void Bot::ChangeDifficulty(BotDifficulty difficulty)
-{
-	if (difficulty != BotDifficulty::Esc)
-		Bot::difficulty = difficulty;
+Bot::Bot()
+	: Player({ 56, 9 }, "Nami")
+{ 
+	shipSearchState.direction = static_cast<Direction>(Random::GenerateInt(static_cast<int>(Direction::Up), static_cast<int>(Direction::Down)));
 }
 
-const Player* Bot::Shoot(Bot& shooter, Player& target, int boardX, int boardY)
-{
-	int shotX = 0, shotY = 0;
-	const Player* winner = nullptr;
 
-	for (;true;)
+std::pair<ShotStatus, GameAction> Bot::Shot(Player& target)
+{	
+	if(!shipSearchState.hitDetected)
 	{
-		target.gameBoard.Show(boardX, boardY);
+		shipSearchState.aliveShipsCount = target.GetBoard().GetAliveShipsCount();
+		GenerateRandomShot(target);
+	}
+	else
+	{
+		for (; !TryMoveInDirection() ;) {}
+	}
 
-		if(!shooter.isHit)
+	ShotStatus shotRes = target.ShootAtBoard(crosshair);
+
+	if (shotRes == ShotStatus::Hit)
+	{
+		if (shipSearchState.hitDetected && !shipSearchState.isDirectionFound)
 		{
-			if (difficulty == BotDifficulty::Normal)
-			{
-				if(shooter.dataEnemyShip == nullptr)
-					shooter.dataEnemyShip = new DataEnemyShip;
-				shooter.dataEnemyShip->sumEnemyLiveShips = target.SumLiveShips();
-			}
-
-			GetShootingCoordinates(target, shotX, shotY);
+			shipSearchState.isDirectionFound = true;
 		}
-
-		if(difficulty == BotDifficulty::Normal)
+		else if (!shipSearchState.hitDetected)
 		{
-			if (shooter.isHit && shooter.dataEnemyShip->orientation == Ship::Direction::None)
-				shooter.ShotNextToHit(shotX, shotY);
-
-			if (shooter.dataEnemyShip->orientation != Ship::Direction::None)
-				shooter.DestroyShip(shotX, shotY);
+			shipSearchState.initialHit = crosshair;
+			shipSearchState.hitDetected = true;
 		}
+	}
+	else if ((shotRes == ShotStatus::Miss || shotRes == ShotStatus::NoneShot) && shipSearchState.hitDetected)
+	{
+		UpdateSearchDirection();
+	}
 
-		Board::BoardSymbol boardSymbol = Board::Shot(shotX, shotY, target);
+	if (shipSearchState.aliveShipsCount != target.GetBoard().GetAliveShipsCount())
+	{
+		ResetToDefaultShipSearchState();
+	}
 
-		Board::CheckAndSetAliveStatus(target);
-		Board::MarkDestroyedShip(target);
+	Console::StopFor(shipSearchState.hitDetected ? 300 : Random::GenerateInt(256, 1000));
 
-		winner = SelectionWinner(shooter, target);
+	return { shotRes, GameAction::Continue };
+}
 
-		if (winner != nullptr)
-			return winner;
+bool Bot::PlaceShips()
+{
+	boardGame.AutoPlaceShips();
 
-		if(boardSymbol == Board::BoardSymbol::ShipSymbol)
-		{
-			if(difficulty == BotDifficulty::Normal)
-			{
-				if (shooter.isHit && shooter.dataEnemyShip->orientation == Ship::Direction::None)
-					shooter.DetermineOrientation();
+	return true;
+}
 
-				if (!shooter.isHit)
-				{
-					shooter.initialization();
-					shooter.dataEnemyShip->isHitX = shotX;
-					shooter.dataEnemyShip->isHitY = shotY;
-					shooter.isHit = true;
-				}
+void Bot::GenerateRandomShot(const Player& target)
+{
+	std::vector<Vector2D> validShotPositions = target.GetBoard().GetValidShotPositions();
 
-				if (shooter.dataEnemyShip->sumEnemyLiveShips != target.SumLiveShips())
-					shooter.restart();
-			}
-
-			continue;
-		}
-
-		if (boardSymbol == Board::BoardSymbol::HitSymbol)
-			continue;
-
-		if (boardSymbol == Board::BoardSymbol::EmptySymbol || boardSymbol == Board::BoardSymbol::MissSymbol)
-		{
-			if (difficulty == BotDifficulty::Normal)
-			{
-				if (shooter.isHit && shooter.dataEnemyShip->directionIndex != 3 && shooter.dataEnemyShip->orientation == Ship::Direction::None)
-					shooter.dataEnemyShip->directionIndex++;
-
-				if (shooter.dataEnemyShip->orientation != Ship::Direction::None)
-					shooter.ChangeDirection();
-			}
-
-			if (boardSymbol == Board::BoardSymbol::EmptySymbol)
-				return nullptr;
-
-			if (boardSymbol == Board::BoardSymbol::MissSymbol)
-				continue;
-		}
-
+	if (!validShotPositions.empty()) 
+	{
+		size_t index = Random::GenerateSize_t(validShotPositions.size() - 1);
+		
+		crosshair = validShotPositions[index];
 	}
 }
 
-void Bot::GetShootingCoordinates(const Player& target, int& shotX, int& shotY)
+void Bot::ReverseDirection()
 {
-	Console::StopFor(Random::GenerateInt(780, 1300));
-
-	std::vector<int> emptyColumns = target.gameBoard.FindEmptyColumns();
-	shotY = emptyColumns[Random::GenerateInt(0, static_cast<int>(emptyColumns.size()) - 1)];
-
-	std::vector<int> emptyStrings = target.gameBoard.EmptyStrings(shotY);
-	shotX = emptyStrings[Random::GenerateInt(0, static_cast<int>(emptyStrings.size()) - 1)];
+	switch (shipSearchState.direction)
+	{ 
+	case Direction::Up:    shipSearchState.direction = Direction::Down;  break;
+	case Direction::Left:  shipSearchState.direction = Direction::Right; break;
+	case Direction::Right: shipSearchState.direction = Direction::Left;  break;
+	case Direction::Down:  shipSearchState.direction = Direction::Up;    break;
+	default: throw GameException("Incorrect 'shipSearchState.direction' value");
+	}
 }
 
-void Bot::initialization()
+void Bot::UpdateSearchDirection()
 {
-	dataEnemyShip->directions.clear();
-	Direction directio;
-	for (; dataEnemyShip->directions.size() != 4;)
+	crosshair = shipSearchState.initialHit;
+
+	if (shipSearchState.isDirectionFound)
 	{
-		directio = static_cast<Direction>(Random::GenerateInt(0, 3));
+		ReverseDirection();
+	}
+	else
+	{
+		ChangeMenuItemUp(shipSearchState.direction, Direction::Up, Direction::Down);
+	}
+}
 
-		bool isNumber = false;
-
-		for (int i = 0; i < dataEnemyShip->directions.size(); ++i)
-			if (dataEnemyShip->directions[i] == directio)
-				isNumber = true;
-
-		if (!isNumber)
-			dataEnemyShip->directions.push_back(directio);
+bool Bot::TryMoveInDirection()
+{
+	if (!shipSearchState.isDirectionFound)
+	{
+		crosshair = shipSearchState.initialHit;
 	}
 
-}
-
-void Bot::ShotNextToHit(int& shotX, int& shotY)
-{
-	Console::StopFor(Random::GenerateInt(440, 750));
-	for (; true;)
+	switch (shipSearchState.direction)
 	{
-		if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Up || dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Down)
+	case Direction::Up:
+		if (crosshair.y > 0)
 		{
-			shotX = dataEnemyShip->isHitX;
-
-			if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Up)
-				shotY = dataEnemyShip->isHitY - 1 >= 0 ? dataEnemyShip->isHitY - 1 : -1;
-
-			if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Down)
-				shotY = dataEnemyShip->isHitY + 1 <= 9 ? dataEnemyShip->isHitY + 1 : -1;
-
-			if (shotY == -1)
-			{
-				dataEnemyShip->directionIndex++;
-				continue;
-			}
-		}
-		else if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Left || dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Right)
-		{
-			shotY = dataEnemyShip->isHitY;
-
-			if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Left)
-				shotX = dataEnemyShip->isHitX - 1 >= 0 ? dataEnemyShip->isHitX - 1 : -1;
-
-			if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Right)
-				shotX = dataEnemyShip->isHitX + 1 <= 9 ? dataEnemyShip->isHitX + 1 : -1;
-
-			if (shotX == -1)
-			{
-				dataEnemyShip->directionIndex++;
-				continue;
-			}
+			--crosshair.y;
+			return true;
 		}
 		break;
-	}
-}
 
-void Bot::DestroyShip(int& shotX, int& shotY)
-{
-	Console::StopFor(Random::GenerateInt(128, 256));
-
-	if (!dataEnemyShip->isDestroy)
-	{
-		dataEnemyShip->tempIsHitX = dataEnemyShip->isHitX;
-		dataEnemyShip->tempIsHitY = dataEnemyShip->isHitY;
-		dataEnemyShip->isDestroy = true;
-	}
-
-	for (; true;)
-	{
-		if (dataEnemyShip->orientation == Ship::Direction::Vertical)
+	case Direction::Left:
+		if (crosshair.x > 0)
 		{
-			shotX = dataEnemyShip->tempIsHitX;
-
-			if (dataEnemyShip->direction == Direction::Up)
-				if (dataEnemyShip->tempIsHitY - 1 >= 0)
-					shotY = --dataEnemyShip->tempIsHitY;
-				else
-				{
-					dataEnemyShip->direction = Direction::Down;
-					continue;
-				}
-
-			if (dataEnemyShip->direction == Direction::Down)
-				if (dataEnemyShip->tempIsHitY + 1 <= 9)
-					shotY = ++dataEnemyShip->tempIsHitY;
-				else
-				{
-					dataEnemyShip->direction = Direction::Up;
-					continue;
-				}
-		}
-		else if (dataEnemyShip->orientation == Ship::Direction::Horizontal)
-		{
-			shotY = dataEnemyShip->tempIsHitY;
-
-			if (dataEnemyShip->direction == Direction::Left)
-				if (dataEnemyShip->tempIsHitX - 1 >= 0)
-					shotX = --dataEnemyShip->tempIsHitX;
-				else
-				{
-					dataEnemyShip->direction = Direction::Right;
-					continue;
-				}
-
-			if (dataEnemyShip->direction == Direction::Right)
-				if (dataEnemyShip->tempIsHitX + 1 <= 9)
-					shotX = ++dataEnemyShip->tempIsHitX;
-				else
-				{
-					dataEnemyShip->direction = Direction::Left;
-					continue;
-				}
+			--crosshair.x;
+			return true;
 		}
 		break;
+
+	case Direction::Right:
+		if (crosshair.x < 9)
+		{
+			++crosshair.x;
+			return true;
+		}
+		break;
+
+	case Direction::Down:
+		if (crosshair.y < 9)
+		{
+			++crosshair.y;
+			return true;
+		}
+		break;
+
+	default:
+		throw GameException("Incorrect 'shipSearchState.direction' value");
 	}
+
+	UpdateSearchDirection();
+	return false;
 }
 
-void Bot::DetermineOrientation()
+void Bot::ResetToDefaultShipSearchState()
 {
-	if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Up || dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Down)
-	{
-		dataEnemyShip->orientation = Ship::Direction::Vertical;
-		dataEnemyShip->direction = dataEnemyShip->directions[dataEnemyShip->directionIndex];
-	}
-	else if (dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Left || dataEnemyShip->directions[dataEnemyShip->directionIndex] == Direction::Right)
-	{
-		dataEnemyShip->orientation = Ship::Direction::Horizontal;
-		dataEnemyShip->direction = dataEnemyShip->directions[dataEnemyShip->directionIndex];
-	}
-}
-
-void Bot::restart()
-{
-	if (dataEnemyShip != nullptr)
-	{
-		delete dataEnemyShip;
-		dataEnemyShip = nullptr;
-	}
-	isHit = false;
-}
-
-void Bot::ChangeDirection()
-{
-	if (dataEnemyShip->orientation == Ship::Direction::Vertical)
-		dataEnemyShip->direction = (dataEnemyShip->direction == Direction::Up) ? Direction::Down : Direction::Up;
-	else if (dataEnemyShip->orientation == Ship::Direction::Horizontal)
-		dataEnemyShip->direction = (dataEnemyShip->direction == Direction::Left) ? Direction::Right : Direction::Left;
-
-	dataEnemyShip->isDestroy = false;
+	shipSearchState.aliveShipsCount = 0;
+	shipSearchState.hitDetected = false;
+	shipSearchState.initialHit = { 0, 0 };
+	shipSearchState.isDirectionFound = false;
+	shipSearchState.direction = static_cast<Direction>(Random::GenerateInt(static_cast<int>(Direction::Up), static_cast<int>(Direction::Down)));
 }

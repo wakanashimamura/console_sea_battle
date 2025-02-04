@@ -1,0 +1,27 @@
++----------------------------------------------------------------------------------------------------+
+|   <- #3                    CC _____      _             _       _     CW                            |
+|                            CC|_   _|   _| |_ ___  _ __(_) __ _| |___ CW                            |
+|                            CC  | || | | | __/ _ \| '__| |/ _` | / __|CW                            |
+|                            CC  | || |_| | || (_) | |  | | (_| | \__ \CW                            |
+|                            CC  |_| \__,_|\__\___/|_|  |_|\__,_|_|___/CW                            |
+|                                                                                                    |
+|                                                                                                    |
+|   6. Statistics                                                                                    |
+|                                                                                                    |
+|   Track your progress with the statistics:                                                         |
+|                                                                                                    |
+|      Games: Total number of games played.                                                          |
+|      Wins: Number of wins.                                                                         |
+|      Defeats: Number of defeats.                                                                   |
+|      Next Level: Points remaining to reach the next rank.                                          |
+|                                                                                                    |
+|   Match Rating (MR)  (For winning +50 MR, for losing -50)                                          |
+|                                                                                                    |
+|      Level 1: 0     to 500  MR     ||   Level 6 : 2401  to 2800 MR                                 |
+|      Level 2: 501   to 900   MR    ||   Level 7 : 2801  to 3100 MR                                 |
+|      Level 3: 901   to 1300  MR    ||   Level 8 : 3101  to 3300 MR                                 |
+|      Level 4: 1301  to 1800  MR    ||   Level 9 : 3301  to 3500 MR                                 |
+|      Level 5: 1801  to 2400  MR    ||   Level 10: 3501  and more MR                                |
+|                                                                                                    |
+|CR ESC / PgUp (main menu) CW                                                                   #4   |
++----------------------------------------------------------------------------------------------------+

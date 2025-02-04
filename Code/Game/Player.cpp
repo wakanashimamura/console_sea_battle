@@ -1,152 +1,82 @@
 #include "Player.h"
 
-#include <iostream>
-#include <cstring>
-#include "../Tools/InputManager.h"
+#include "../Tools/GameException.h"
+#include "UserInterface.h"
 
-void Player::ChangePlayerName(const std::string& name)
+Player::Player(Vector2D boardPosition, const std::string name)
+	: boardPosition(boardPosition), crosshair(DefaultCrosshairPosition)
 {
-	playerName = name;
+	ChangeName(name);
 }
 
-void Player::ShowPlayerName(int X, int Y, Console::Color color) const
+std::pair<ShotStatus, GameAction> Player::Shot(Player& target)
 {
-	Console::SetCursorPosition(X, Y);
-	Console::ChangColor(color);
-	std::cout << playerName;
-}
-
-void Player::ShowPlayerName(Console::Color color) const
-{
-	Console::ChangColor(color);
-	std::cout << playerName;
-}
-
-const Player* Player::Shoot(const Player& shooter, Player& target, bool& isStartGame, int boardX, int boardY)
-{
-	int shotX = 5, shotY = 5;
-	const Player* winner = nullptr;
-
-	for (;true;)
+	UserInterface& userInterface = UserInterface::GetObjectWindow();
+	for (;;)
 	{
-		if(!GetShootingCoordinates(target, shotX, shotY, boardX, boardY))
+		userInterface.RenderGameBoard(crosshair, target.GetBoard().GetHiddenGameBoard(), Board::symbolColors, target.GetName(), target.GetBoardPosition());
+		InputManager::Key key = userInterface.MoveCrosshair(crosshair);
+		if (key == InputManager::Key::Enter || key == InputManager::Key::E)
 		{
-			isStartGame = false;
-			return nullptr;
+			return { target.ShootAtBoard(crosshair), GameAction::Continue };
 		}
-		Board::BoardSymbol boardSymbol = Board::Shot(shotX, shotY, target);
-
-
-		Board::CheckAndSetAliveStatus(target);
-		Board::MarkDestroyedShip(target);
-
-		winner = SelectionWinner(shooter, target);
-
-		if (winner != nullptr)
-			return winner;
-
-		if (boardSymbol == Board::BoardSymbol::HitSymbol || boardSymbol == Board::BoardSymbol::MissSymbol || boardSymbol == Board::BoardSymbol::ShipSymbol)
-			continue;
-
-		if (boardSymbol == Board::BoardSymbol::EmptySymbol)
-			return nullptr;
-	}
-}
-
-bool Player::IsLivingShip() const
-{
-	for (int shipIndex = 0; shipIndex < static_cast<int>(ShipIndex::ShipCount); ++shipIndex)
-	{
-		const Ship& ship = Ships[shipIndex];
-
-		if (ship.GetIsAlive())
-			return true;
-	}
-
-	return false;
-}
-
-int Player::SumLiveShips() const
-{
-	int sum = 0;
-	for (int shipIndex = 0; shipIndex < static_cast<int>(ShipIndex::ShipCount); ++shipIndex)
-	{
-		const Ship& ship = Ships[shipIndex];
-
-		if (ship.GetIsAlive())
-			++sum;
-	}
-
-	return sum;
-}
-
-bool Player::GetShootingCoordinates(const Player& target, int& shotX, int& shotY, int boardX, int boardY)
-{
-	for (;true;)
-	{
-		if (InputManager::UserPressedKey())
+		else if (key == InputManager::Key::Escape || key == InputManager::Key::PageUp)
 		{
-			target.gameBoard.Show(boardX, boardY, true);
-			InputManager::Key key = InputManager::PressedKey();
-
-			switch (key)
-			{
-			case InputManager::Key::Escape:
-				return false;
-			case InputManager::Key::Enter:
-				if (shotX >= 0 && shotX <= Board::SIZE - 1 && shotY >= 0 && shotY <= Board::SIZE - 1)
-					return true;
-				break;
-			case InputManager::Key::ArrowUp:
-				if (shotY > 0)
-					shotY--;
-				else
-					shotY = Board::SIZE - 1;
-				break;
-			case InputManager::Key::ArrowLeft:
-				if (shotX > 0)
-					shotX--;
-				else
-					shotX = Board::SIZE - 1;
-				break;
-			case InputManager::Key::ArrowRight:
-				if (shotX < Board::SIZE - 1)
-					shotX++;
-				else
-					shotX = 0;
-				break;
-			case InputManager::Key::ArrowDown:
-				if (shotY < Board::SIZE - 1)
-					shotY++;
-				else
-					shotY = 0;
-				break;
-			default:
-				break;
-			}
+			return { ShotStatus::NoneShot, GameAction::End};
 		}
-		target.gameBoard.Show(boardX, boardY, true, shotX, shotY, true);
 	}
 }
 
-const Player* Player::SelectionWinner(const Player& shooter, const Player& target) 
+bool Player::PlaceShips()
 {
-	int sumShipsShooter = shooter.SumLiveShips();
-	int sumShipsTarget = target.SumLiveShips();
-
-	if (sumShipsShooter > 0 && sumShipsTarget > 0)
-		return nullptr;
-
-	if (sumShipsTarget == 0)
-		return &shooter;
-
-	if (sumShipsShooter == 0)
-		return &target;
-
-	return nullptr;
+	return boardGame.SetupPlayerShips(GetName());
 }
 
-Player::Player(const std::string& name)
+void Player::ChangeName(const std::string& name)
 {
-	ChangePlayerName(name);
+	if (name.length() > MAX_USERNAME_LENGTH)
+	{
+		throw GameException("Your username is too long! maximum number of characters " + std::to_string(MAX_USERNAME_LENGTH));
+	}
+
+	this->name = name;
+}
+
+void Player::ResetAfterMatch()
+{
+	boardGame.ResetToDefaultState();
+	crosshair = { 5, 5 };
+}
+
+void Player::UpdateWinnerStatus()
+{
+	statistics.UpdateWinnerStatus(MR);
+}
+
+void Player::UpdateLoserStatus()
+{
+	statistics.UpdateLoserStatus(MR);
+}
+
+void Player::Write(std::ofstream& fileStream) const
+{
+	// - Write Name -
+	std::string::size_type nameLength = name.length();
+	fileStream.write(reinterpret_cast<const char*>(&nameLength), sizeof(nameLength));
+	fileStream.write(name.c_str(), nameLength);
+
+	// - Write Statistics -
+	statistics.Write(fileStream);
+}
+
+void Player::Read(std::ifstream& fileStream)
+{
+	// - Read Name -
+	std::string::size_type nameLength;
+	fileStream.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
+	name.resize(nameLength);
+	fileStream.read(&name[0], nameLength);
+
+	// - Read Statistics -
+	statistics.Read(fileStream);
 }
